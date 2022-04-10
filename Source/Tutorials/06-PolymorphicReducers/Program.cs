@@ -41,8 +41,16 @@ var schoolAddStudentAchievementReducer = Reducer.Combine(schoolHeadStudentAddAch
 // of the school, because Steven Cramer is too smelly.
 var schoolChangeHeadStudentReducer = Reducer
 	.Given<School, ChangeHeadStudent>()
-	.When((student, delta) => student.HeadStudent.Id != delta.Student.Id)
+	.When((school, delta) => school.HeadStudent.Id != delta.Student.Id)
 	.Then((student, delta) => student with { HeadStudent = delta.Student });
+
+// Now build a reducer that can handle both
+// Delta types by allowing us to pass `TState` + `object`
+var schoolReducer = Reducer.CreateBuilder<School>()
+	.Add(schoolAddStudentAchievementReducer)
+	.Add(schoolChangeHeadStudentReducer)
+	.Build();
+
 
 var student1 = new Student(1, "Peter Morris");
 var student2 = new Student(2, "Steven Cramer");
@@ -51,15 +59,8 @@ var allStudents = ImmutableArray.Create<Student>(student1, student2);
 var school = new School(allStudents, HeadStudent: student2);
 
 var addAchievementDelta = new AddStudentAchievement(2, "Smells");
-var chaneHeadStudentDelta = new ChangeHeadStudent(student1);
+var changeHeadStudentDelta = new ChangeHeadStudent(student1);
 
-
-// Now build a reducer that can handle both
-// actions by allowing us to pass `TState` + `object`
-var schoolReducer = Reducer.CreateBuilder<School>()
-	.Add(schoolAddStudentAchievementReducer)
-	.Add(schoolChangeHeadStudentReducer)
-	.Build();
 
 ConsoleColor defaultColor = Console.ForegroundColor;
 var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
@@ -69,8 +70,11 @@ DisplayState(step: 0, school, false, jsonOptions, defaultColor);
 (bool changed, school) = schoolReducer(school, addAchievementDelta);
 DisplayState(step: 1, school, changed, jsonOptions);
 
-(changed, school) = schoolReducer(school, chaneHeadStudentDelta);
+(changed, school) = schoolReducer(school, changeHeadStudentDelta);
 DisplayState(step: 2, school, changed, jsonOptions);
+
+(changed, school) = schoolReducer(school, "We don't have a reducer for a simple string delta, so this does nothing");
+DisplayState(step: 3, school, changed, jsonOptions);
 
 Console.ForegroundColor = defaultColor;
 Console.ReadLine();
